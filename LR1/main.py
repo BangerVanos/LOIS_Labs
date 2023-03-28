@@ -13,7 +13,7 @@ from dnf_qualifier.dnf_qualifier import DNFQualifier, IncorrectFormula
 
 if __name__ == '__main__':
     try:
-        formula = r'((X1 & X3) | (X3 & (X1 & (!X2))))'
+        formula = input('Enter formula: ')
         print(f'{formula} : {DNFQualifier.is_dnf(formula)}')
     except IncorrectFormula as err:
         print(f'Error: {err}')
