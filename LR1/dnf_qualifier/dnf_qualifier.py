@@ -13,9 +13,9 @@ class IncorrectFormula(Exception):
 
 
 class DNFQualifier:
-    LOGICAL_OPERATIONS = {'disjunction': '|',
-                          'conjunction': '&',
-                          'negation': '!'}  # Dictionary with logical operations
+    MACHINERY_SYMBOLS = {'disjunction': '|',
+                         'conjunction': '&',
+                         'negation': '!'}  # Dictionary with logical operations (machinery ones)
 
     CONSTANTS = ('1', '0')  # Constants list
     ALLOWED_SYMBOLS = 'ABCDEFGHIJKMNLOPQRSTUVWXYZ0123456789\\/()!'
@@ -23,13 +23,14 @@ class DNFQualifier:
     @classmethod
     def is_dnf(cls, formula: str) -> bool:
         """Method checks if given formula is in DNF form"""
-        if not formula:
-            raise IncorrectFormula('Empty string')
-        if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
-            raise IncorrectFormula('Not allowed symbol')
-        formula_parenthesis = [sym for sym in formula if sym in ('(', ')')]  # Making list of formulas parentheses
-        if not cls.__check_parenthesis(formula_parenthesis):  # Check if parentheses order and amount is appropriate
-            raise IncorrectFormula('Incorrect placement of parenthesis')
+        try:
+            initial_check = cls.__check_initial_check(formula)
+        except IncorrectFormula as err:
+            raise IncorrectFormula(err)
+        if not initial_check:
+            return False
+        if cls.__is_atomic(formula) and formula != '0':
+            return True
         if formula[0] == '(' and formula[-1] == ')':  # Remove formula's framing parentheses
             formula = formula[1:-1]
         formula = cls.__replace_special_syms(formula)  # Replacing some symbols for easier processing
@@ -39,6 +40,18 @@ class DNFQualifier:
         for term in terms:  # Check whether all of our terms are terms correct for DNF form
             if not cls.__is_primal_conjunction(term):
                 return False
+        return True
+
+    @classmethod
+    def __check_initial_check(cls, formula: str):
+        """Initial check for formula"""
+        if not formula:
+            raise IncorrectFormula("Formula string is empty")
+        if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
+            raise IncorrectFormula('Not allowed symbol')
+        formula_parenthesis = [sym for sym in formula if sym in ('(', ')')]  # Making list of formulas parentheses
+        if not cls.__check_parenthesis(formula_parenthesis):  # Check if parentheses order and amount is appropriate
+            raise IncorrectFormula('Incorrect placement of parenthesis')
         return True
 
     @staticmethod
@@ -90,7 +103,7 @@ class DNFQualifier:
             term = term[1:-1]
         if '!(' in term:  # Sometimes negation operation is applied to all term, not a literal.
             return False  # That is not the right case, so False is returned
-        literals = term.split(cls.LOGICAL_OPERATIONS['conjunction'])  # Split term string to find hypothetical literals
+        literals = term.split(cls.MACHINERY_SYMBOLS['conjunction'])  # Split term string to find hypothetical literals
         for literal in literals:  # Check all hypothetical literals for being real literals
             if not cls.__is_literal(literal):  # If at least one hypothetical literal is not a real one
                 return False  # Term string is not a term
@@ -103,12 +116,18 @@ class DNFQualifier:
         if not literal:  # If literal string is empty, given formula string is not a formula at all
             raise IncorrectFormula('Unreadable literal. Check your formula for empty parenthesis')
         literal = literal.replace('(', '').replace(')', '')  # Removing all parentheses
-        literal = literal.replace(cls.LOGICAL_OPERATIONS['negation'], '', 1)  # Removing negation (only one)
-        if literal in cls.CONSTANTS:  # Sometimes literal can be constant
-            return True
-        if not literal[0].isupper():  # Variable's name can only contain upper latin letters with optional index
+        literal = literal.replace(cls.MACHINERY_SYMBOLS['negation'], '', 1)  # Removing negation (only one)
+        if not cls.__is_atomic(literal):
             return False
-        if len(literal) > 1:  # If variable's name contains index
-            if not (literal[1:].isdigit() and not literal[1] == '0'):  # Index can only be natural number
+        return True
+
+    @classmethod
+    def __is_atomic(cls, atomic: str):
+        if atomic in cls.CONSTANTS:  # Sometimes literal can be constant
+            return True
+        if not atomic[0].isupper():  # Variable's name can only contain upper latin letters with optional index
+            return False
+        if len(atomic) > 1:  # If variable's name contains index
+            if not (atomic[1:].isdigit() and not atomic[1] == '0'):  # Index can only be natural number
                 return False
         return True
