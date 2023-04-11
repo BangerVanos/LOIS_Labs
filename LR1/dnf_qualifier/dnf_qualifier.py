@@ -23,6 +23,12 @@ class DNFQualifier:
     @classmethod
     def is_dnf(cls, formula: str) -> bool:
         """Method checks if given formula is in DNF form"""
+        if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
+            raise IncorrectFormula('Not allowed symbol')
+        if cls.__is_atomic(formula) and formula not in cls.CONSTANTS:
+            return True
+        elif formula in cls.CONSTANTS:
+            return False
         formula = cls.__replace_special_syms(formula)
         try:
             initial_check = cls.__check_initial_check(formula)
@@ -30,17 +36,9 @@ class DNFQualifier:
             raise IncorrectFormula(err)
         if not initial_check:
             return False
-        if cls.__is_atomic(formula) and formula != '0':
-            return True
-        if formula[0] == '(' and formula[-1] == ')':  # Remove formula's framing parentheses
-            formula = formula[1:-1]
-        formula = cls.__replace_special_syms(formula)  # Replacing some symbols for easier processing
-        terms = cls.__find_terms(formula)  # Finding all terms
-        if not terms:  # If there are no terms, input string is not a formula at all
-            raise IncorrectFormula('No terms founded. Looks like you have inserted empty parenthesis')
-        for term in terms:  # Check whether all of our terms are terms correct for DNF form
-            if not cls.__is_primal_conjunction(term):
-                return False
+        operations_rank_list = cls.__apply_ranks_to_operations(formula)
+        if not cls.__check_operations_order(operations_rank_list):
+            return False
         return True
 
     @classmethod
@@ -48,8 +46,6 @@ class DNFQualifier:
         """Initial check for formula"""
         if not formula:
             raise IncorrectFormula("Formula string is empty")
-        if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
-            raise IncorrectFormula('Not allowed symbol')
         try:
             if not cls.__only_atomic_negations(formula):
                 return False
@@ -62,7 +58,7 @@ class DNFQualifier:
         if not len(formula_parenthesis) == operator_count * 2:
             return False
         try:
-            operation_syntax = cls.__check_parenthesis_order(formula)
+            operation_syntax = cls.__check_formula_syntax(formula)
         except IncorrectFormula as err:
             raise IncorrectFormula(err)
         if not operation_syntax:
@@ -103,53 +99,27 @@ class DNFQualifier:
         return formula.replace('\\/', '|').replace('/\\', '&')
 
     @classmethod
-    def __find_terms(cls, formula: str):
-        """Find all terms in formula"""
-        terms = []  # Future term's list
-        raw_term = ''
-        parenthesis_rank = 0  # Rank of parenthesis
-        for sym in formula:  # Check all symbols from formula's string
-            # if sym == '(':
-            #     parenthesis_rank += 1  # Add one rank if open parenthesis is met
-            # elif sym == ')':
-            #     parenthesis_rank -= 1  # Remove one rank if open parenthesis is met
-            if sym == '|':  # If disjunction symbol and all parentheses are compensated
-                terms.append(raw_term)  # New term is appended to terms list
-                raw_term = ''
-                continue
-            raw_term += sym  # Otherwise, symbol is added to forming term
-        if raw_term:
-            terms.append(raw_term)  # After iterating through all symbols, new term is added to list if not empty
-        return terms
+    def __apply_ranks_to_operations(cls, formula: str):
+        operation_rank = 0
+        operations_rank_list = []
+        for sym in formula:
+            if sym == '(':
+                operation_rank += 1
+            elif sym == ')':
+                operation_rank -= 1
+            elif sym in cls.MACHINERY_SYMBOLS.values() and sym != cls.MACHINERY_SYMBOLS['negation']:
+                operations_rank_list.append((sym, operation_rank))
+        return sorted(operations_rank_list, key=lambda x: x[1])
 
     @classmethod
-    def __is_primal_conjunction(cls, term: str) -> bool:
-        """Method checks if term is primal conjunction."""
-        if not term:  # First we check if our term string is empty or not
-            raise IncorrectFormula('Empty term. Looks like you placed too many operations')
-        if term[0] == '(' and term[-1] == ')':  # Remove term's framing brackets
-            term = term[1:-1]
-        if cls.MACHINERY_SYMBOLS['conjunction']:
-            literals = term.split(cls.MACHINERY_SYMBOLS['conjunction'])  # Split term to find hypothetical literals
-        else:
-            literals = term.split(cls.MACHINERY_SYMBOLS['disjunction'])
-        if not len(literals) in (1, 2):
-            return False
-        for literal in literals:  # Check all hypothetical literals for being real literals
-            if not cls.__is_literal(literal):  # If at least one hypothetical literal is not a real one
-                return False  # Term string is not a term
-        return True  # If all terms are real one, our term string is real term
-
-    @classmethod
-    def __is_literal(cls, literal: str) -> bool:
-        """Method checks if given string is literal:
-        variable or !variable. Check includes special literal like constants."""
-        if not literal:  # If literal string is empty, given formula string is not a formula at all
-            raise IncorrectFormula('Unreadable literal. Check your formula for empty parenthesis')
-        literal = literal.replace('(', '').replace(')', '')  # Removing all parentheses
-        literal = literal.replace(cls.MACHINERY_SYMBOLS['negation'], '', 1)  # Removing negation (only one)
-        if not cls.__is_atomic(literal):
-            return False
+    def __check_operations_order(cls, operations_rank_list: list):
+        last_operation = (None, None)
+        for operation_rank in operations_rank_list:
+            if (operation_rank[0] == cls.MACHINERY_SYMBOLS['disjunction']
+                and last_operation[0] == cls.MACHINERY_SYMBOLS['conjunction']) \
+                    and (operation_rank[1] != last_operation[1]):
+                return False
+            last_operation = operation_rank
         return True
 
     @classmethod
@@ -167,20 +137,32 @@ class DNFQualifier:
         return True
 
     @classmethod
-    def __check_parenthesis_order(cls, formula: str):
+    def __check_formula_syntax(cls, formula: str):
         if formula == '#':
             return True
         deepest_operation_index = cls.__find_index_of_deepest_operation(formula)
-        close_parenthesis_index = formula[deepest_operation_index:].find(')')
+        close_parenthesis_index = formula[deepest_operation_index:].find(')') + deepest_operation_index
         if close_parenthesis_index == -1:
             raise IncorrectFormula('No close parenthesis')
-        open_parenthesis_index = formula[:deepest_operation_index].rindex('(')
+        open_parenthesis_index = formula[:deepest_operation_index].rfind('(')
+        if formula[deepest_operation_index] == cls.MACHINERY_SYMBOLS['negation']:
+            negation_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
+            if not (deepest_operation_index - open_parenthesis_index == 1 and (cls.__is_atomic(negation_argument)
+                                                                               or negation_argument == '#')):
+                raise IncorrectFormula('Incorrect negation argument')
+        else:
+            left_argument = formula[open_parenthesis_index + 1:deepest_operation_index]
+            right_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
+            if not ((cls.__is_atomic(left_argument) or left_argument == '#')
+                    and (cls.__is_atomic(right_argument) or right_argument == '#')):
+                raise IncorrectFormula('Incorrect binary operation arguments')
         formula = formula[:open_parenthesis_index] + '#' + formula[close_parenthesis_index + 1:]
-        cls.__check_parenthesis_order(formula)
+        cls.__check_formula_syntax(formula)
+        return True
 
     @classmethod
     def __find_index_of_deepest_operation(cls, formula: str):
-        deepest_parenthesis_index = formula.rindex('(')
+        deepest_parenthesis_index = formula.rfind('(')
         for i in range(deepest_parenthesis_index, len(formula)):
             if formula[i] in cls.MACHINERY_SYMBOLS.values():
                 return i
