@@ -23,6 +23,7 @@ class DNFQualifier:
     @classmethod
     def is_dnf(cls, formula: str) -> bool:
         """Method checks if given formula is in DNF form"""
+        formula = cls.__replace_special_syms(formula)
         try:
             initial_check = cls.__check_initial_check(formula)
         except IncorrectFormula as err:
@@ -49,9 +50,23 @@ class DNFQualifier:
             raise IncorrectFormula("Formula string is empty")
         if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
             raise IncorrectFormula('Not allowed symbol')
+        try:
+            if not cls.__only_atomic_negations(formula):
+                return False
+        except IncorrectFormula as err:
+            raise IncorrectFormula(err)
         formula_parenthesis = [sym for sym in formula if sym in ('(', ')')]  # Making list of formulas parentheses
         if not cls.__check_parenthesis(formula_parenthesis):  # Check if parentheses order and amount is appropriate
             raise IncorrectFormula('Incorrect placement of parenthesis')
+        operator_count = formula.count('!') + formula.count('|') + formula.count('&')
+        if not len(formula_parenthesis) == operator_count * 2:
+            return False
+        try:
+            operation_syntax = cls.__check_parenthesis_order(formula)
+        except IncorrectFormula as err:
+            raise IncorrectFormula(err)
+        if not operation_syntax:
+            return False
         return True
 
     @staticmethod
@@ -69,10 +84,23 @@ class DNFQualifier:
                 parenthesis_stack.append(parenthesis)
         return not parenthesis_stack  # If parentheses stack is not empty, sequence of parentheses is not right
 
+    @classmethod
+    def __only_atomic_negations(cls, formula: str):
+        while not formula.find('!') == -1:
+            negation_index = formula.find('!')
+            try:
+                negation_subformula = formula[negation_index + 1:formula.find(')', negation_index)]
+            except IndexError:
+                raise IncorrectFormula('No closing parenthesis')
+            if not cls.__is_atomic(negation_subformula):
+                return False
+            formula = formula.replace(f'!{negation_subformula}', '', 1)
+        return True
+
     @staticmethod
     def __replace_special_syms(formula: str):
         """Replace some operation symbols for better processing"""
-        return formula.replace('\\/', '|').replace('/\\', '&').replace('¬', '!')
+        return formula.replace('\\/', '|').replace('/\\', '&')
 
     @classmethod
     def __find_terms(cls, formula: str):
@@ -81,11 +109,11 @@ class DNFQualifier:
         raw_term = ''
         parenthesis_rank = 0  # Rank of parenthesis
         for sym in formula:  # Check all symbols from formula's string
-            if sym == '(':
-                parenthesis_rank += 1  # Add one rank if open parenthesis is met
-            elif sym == ')':
-                parenthesis_rank -= 1  # Remove one rank if open parenthesis is met
-            elif sym == '|' and parenthesis_rank == 0:  # If disjunction symbol and all parentheses are compensated
+            # if sym == '(':
+            #     parenthesis_rank += 1  # Add one rank if open parenthesis is met
+            # elif sym == ')':
+            #     parenthesis_rank -= 1  # Remove one rank if open parenthesis is met
+            if sym == '|':  # If disjunction symbol and all parentheses are compensated
                 terms.append(raw_term)  # New term is appended to terms list
                 raw_term = ''
                 continue
@@ -101,9 +129,12 @@ class DNFQualifier:
             raise IncorrectFormula('Empty term. Looks like you placed too many operations')
         if term[0] == '(' and term[-1] == ')':  # Remove term's framing brackets
             term = term[1:-1]
-        if '!(' in term:  # Sometimes negation operation is applied to all term, not a literal.
-            return False  # That is not the right case, so False is returned
-        literals = term.split(cls.MACHINERY_SYMBOLS['conjunction'])  # Split term string to find hypothetical literals
+        if cls.MACHINERY_SYMBOLS['conjunction']:
+            literals = term.split(cls.MACHINERY_SYMBOLS['conjunction'])  # Split term to find hypothetical literals
+        else:
+            literals = term.split(cls.MACHINERY_SYMBOLS['disjunction'])
+        if not len(literals) in (1, 2):
+            return False
         for literal in literals:  # Check all hypothetical literals for being real literals
             if not cls.__is_literal(literal):  # If at least one hypothetical literal is not a real one
                 return False  # Term string is not a term
@@ -123,6 +154,9 @@ class DNFQualifier:
 
     @classmethod
     def __is_atomic(cls, atomic: str):
+        """Method checks whether string is atomic formula"""
+        if not atomic:
+            raise IncorrectFormula('Empty atomic formula')
         if atomic in cls.CONSTANTS:  # Sometimes literal can be constant
             return True
         if not atomic[0].isupper():  # Variable's name can only contain upper latin letters with optional index
@@ -131,3 +165,23 @@ class DNFQualifier:
             if not (atomic[1:].isdigit() and not atomic[1] == '0'):  # Index can only be natural number
                 return False
         return True
+
+    @classmethod
+    def __check_parenthesis_order(cls, formula: str):
+        if formula == '#':
+            return True
+        deepest_operation_index = cls.__find_index_of_deepest_operation(formula)
+        close_parenthesis_index = formula[deepest_operation_index:].find(')')
+        if close_parenthesis_index == -1:
+            raise IncorrectFormula('No close parenthesis')
+        open_parenthesis_index = formula[:deepest_operation_index].rindex('(')
+        formula = formula[:open_parenthesis_index] + '#' + formula[close_parenthesis_index + 1:]
+        cls.__check_parenthesis_order(formula)
+
+    @classmethod
+    def __find_index_of_deepest_operation(cls, formula: str):
+        deepest_parenthesis_index = formula.rindex('(')
+        for i in range(deepest_parenthesis_index, len(formula)):
+            if formula[i] in cls.MACHINERY_SYMBOLS.values():
+                return i
+        raise IncorrectFormula('Incorrect formula')
