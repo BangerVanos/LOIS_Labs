@@ -82,6 +82,7 @@ class DNFQualifier:
 
     @classmethod
     def __only_atomic_negations(cls, formula: str):
+        """Method check whether negations in formula are used only for atomic formulas"""
         while not formula.find('!') == -1:
             negation_index = formula.find('!')
             try:
@@ -100,6 +101,7 @@ class DNFQualifier:
 
     @classmethod
     def __apply_ranks_to_operations(cls, formula: str):
+        """Method applies ranks for formula operations"""
         operation_rank = 0
         operations_rank_list = []
         for sym in formula:
@@ -113,6 +115,7 @@ class DNFQualifier:
 
     @classmethod
     def __check_operations_order(cls, operations_rank_list: list):
+        """Method checks whether operation order matches that one for DNF"""
         last_operation = (None, None)
         for operation_rank in operations_rank_list:
             if (operation_rank[0] == cls.MACHINERY_SYMBOLS['disjunction']
@@ -138,6 +141,7 @@ class DNFQualifier:
 
     @classmethod
     def __check_formula_syntax(cls, formula: str):
+        """Method checks if formula matches boolean algebra formula syntax"""
         if formula == '#':
             return True
         deepest_operation_index = cls.__find_index_of_deepest_operation(formula)
@@ -162,6 +166,7 @@ class DNFQualifier:
 
     @classmethod
     def __find_index_of_deepest_operation(cls, formula: str):
+        """Method finds 'deepest' operation in formula and returns its index"""
         deepest_parenthesis_index = formula.rfind('(')
         for i in range(deepest_parenthesis_index, len(formula)):
             if formula[i] in cls.MACHINERY_SYMBOLS.values():
