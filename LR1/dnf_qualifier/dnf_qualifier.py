@@ -32,7 +32,7 @@ class DNFQualifier:
             return False
         formula = cls.__replace_special_syms(formula)
         try:
-            initial_check = cls.__check_initial_check(formula)
+            initial_check = cls.__initial_check(formula)
         except IncorrectFormula as err:
             raise IncorrectFormula(err)
         if not initial_check:
@@ -43,7 +43,7 @@ class DNFQualifier:
         return True
 
     @classmethod
-    def __check_initial_check(cls, formula: str):
+    def __initial_check(cls, formula: str):
         """Initial check for formula"""
         if not formula:
             raise IncorrectFormula("Formula string is empty")
@@ -141,26 +141,24 @@ class DNFQualifier:
     @classmethod
     def __check_formula_syntax(cls, formula: str):
         """Method checks if formula matches boolean algebra formula syntax"""
-        if formula == '#':
-            return True
-        deepest_operation_index = cls.__find_index_of_deepest_operation(formula)
-        close_parenthesis_index = formula[deepest_operation_index:].find(')') + deepest_operation_index
-        if close_parenthesis_index == -1:
-            raise IncorrectFormula('No close parenthesis')
-        open_parenthesis_index = formula[:deepest_operation_index].rfind('(')
-        if formula[deepest_operation_index] == cls.MACHINERY_SYMBOLS['negation']:
-            negation_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
-            if not (deepest_operation_index - open_parenthesis_index == 1 and (cls.__is_variable(negation_argument)
-                                                                               or negation_argument == '#')):
-                raise IncorrectFormula('Incorrect negation argument')
-        else:
-            left_argument = formula[open_parenthesis_index + 1:deepest_operation_index]
-            right_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
-            if not ((cls.__is_variable(left_argument) or left_argument == '#')
-                    and (cls.__is_variable(right_argument) or right_argument == '#')):
-                raise IncorrectFormula('Incorrect binary operation arguments')
-        formula = formula[:open_parenthesis_index] + '#' + formula[close_parenthesis_index + 1:]
-        cls.__check_formula_syntax(formula)
+        while not formula == '#':
+            deepest_operation_index = cls.__find_index_of_deepest_operation(formula)
+            close_parenthesis_index = formula[deepest_operation_index:].find(')') + deepest_operation_index
+            if close_parenthesis_index == -1:
+                raise IncorrectFormula('No close parenthesis')
+            open_parenthesis_index = formula[:deepest_operation_index].rfind('(')
+            if formula[deepest_operation_index] == cls.MACHINERY_SYMBOLS['negation']:
+                negation_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
+                if not (deepest_operation_index - open_parenthesis_index == 1 and (cls.__is_variable(negation_argument)
+                                                                                   or negation_argument == '#')):
+                    raise IncorrectFormula('Incorrect negation argument')
+            else:
+                left_argument = formula[open_parenthesis_index + 1:deepest_operation_index]
+                right_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
+                if not ((cls.__is_variable(left_argument) or left_argument == '#')
+                        and (cls.__is_variable(right_argument) or right_argument == '#')):
+                    raise IncorrectFormula('Incorrect binary operation arguments')
+            formula = formula[:open_parenthesis_index] + '#' + formula[close_parenthesis_index + 1:]
         return True
 
     @classmethod
