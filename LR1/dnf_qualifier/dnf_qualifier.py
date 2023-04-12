@@ -26,7 +26,7 @@ class DNFQualifier:
         """Method checks if given formula is in DNF form"""
         if not all([sym in cls.ALLOWED_SYMBOLS for sym in formula]):  # Check if all formula's symbols are allowed
             raise IncorrectFormula('Not allowed symbol')
-        if cls.__is_atomic(formula) and formula not in cls.CONSTANTS:
+        if cls.__is_variable(formula) and formula not in cls.CONSTANTS:
             return True
         elif formula in cls.CONSTANTS:
             return False
@@ -90,7 +90,7 @@ class DNFQualifier:
                 negation_subformula = formula[negation_index + 1:formula.find(')', negation_index)]
             except IndexError:
                 raise IncorrectFormula('No closing parenthesis')
-            if not cls.__is_atomic(negation_subformula):
+            if not cls.__is_variable(negation_subformula):
                 return False
             formula = formula.replace(f'!{negation_subformula}', '', 1)
         return True
@@ -127,16 +127,14 @@ class DNFQualifier:
         return True
 
     @classmethod
-    def __is_atomic(cls, atomic: str):
-        """Method checks whether string is atomic formula"""
-        if not atomic:
-            raise IncorrectFormula('Empty atomic formula')
-        if atomic in cls.CONSTANTS:  # Sometimes literal can be constant
-            return True
-        if not atomic[0].isupper():  # Variable's name can only contain upper latin letters with optional index
+    def __is_variable(cls, variable: str):
+        """Method checks whether string is variable"""
+        if not variable:
+            raise IncorrectFormula('Empty variable')
+        if not variable[0].isupper():  # Variable's name can only contain upper latin letters with optional index
             return False
-        if len(atomic) > 1:  # If variable's name contains index
-            if not (atomic[1:].isdigit() and not atomic[1] == '0'):  # Index can only be natural number
+        if len(variable) > 1:  # If variable's name contains index
+            if not (variable[1:].isdigit() and not variable[1] == '0'):  # Index can only be natural number
                 return False
         return True
 
@@ -152,14 +150,14 @@ class DNFQualifier:
         open_parenthesis_index = formula[:deepest_operation_index].rfind('(')
         if formula[deepest_operation_index] == cls.MACHINERY_SYMBOLS['negation']:
             negation_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
-            if not (deepest_operation_index - open_parenthesis_index == 1 and (cls.__is_atomic(negation_argument)
+            if not (deepest_operation_index - open_parenthesis_index == 1 and (cls.__is_variable(negation_argument)
                                                                                or negation_argument == '#')):
                 raise IncorrectFormula('Incorrect negation argument')
         else:
             left_argument = formula[open_parenthesis_index + 1:deepest_operation_index]
             right_argument = formula[deepest_operation_index + 1:close_parenthesis_index]
-            if not ((cls.__is_atomic(left_argument) or left_argument == '#')
-                    and (cls.__is_atomic(right_argument) or right_argument == '#')):
+            if not ((cls.__is_variable(left_argument) or left_argument == '#')
+                    and (cls.__is_variable(right_argument) or right_argument == '#')):
                 raise IncorrectFormula('Incorrect binary operation arguments')
         formula = formula[:open_parenthesis_index] + '#' + formula[close_parenthesis_index + 1:]
         cls.__check_formula_syntax(formula)
