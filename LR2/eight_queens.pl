@@ -1,4 +1,6 @@
-n_queens(N, Q) :-
+:- use_module(library(clpfd)).
+
+n_queens(N, Qs) :-
     length(Qs, N),
     Qs ins 1..N,
     safe_queens(Qs).
