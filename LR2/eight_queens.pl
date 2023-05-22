@@ -1,18 +1,34 @@
-:- use_module(library(clpfd)).
+% Лабораторная работа №2 по дисциплине ЛОИС
+% Выполнена студентом группы 121702 БГУИР Заломовым Романом Андреевичем
+% 18.05.22
+% Файл программы осуществляет решение задачи N ферзей, размещённых на шахматной доске NxN
+% таким образом, что ни один ферзь не может бить любого другого
 
-n_queens(N, Qs) :-
-    length(Qs, N),
-    Qs ins 1..N,
-    safe_queens(Qs).
+% Учитывая то, что все колонки шахматной доски должны быть заняты,
+% суть задачи осуществляется в поиске клетки на соответствующей колонке.
 
-safe_queens([]).
-safe_queens([Q|Qs]) :-
-    safe_queens(Q, Qs, 1),
-    safe_queens(Qs).
 
-safe_queens([], _, _).
-safe_queens([Q|Qs], Q0, D0) :-
-    Q0 #\= Q,
-    abs(Q0-Q) #\= D0,
-    D #= D0 + 1,
-    safe_queens(Qs, Q0, D).
+% Главный предикат, отвечающий за решение задачи
+queens(N, Solution) :-
+    length(Solution, N),
+    numlist(1, N, Rows),
+    permutation(Rows, Solution),
+    safe_all(Solution).
+
+% Факт, указывающий на то, что доска 0x0 всегда имеет решение.
+safe_all([]).
+
+% Предикат, определяющий условия безопасности какого-либо ферзя относительно всех остальных
+safe_all([Queen|Queens]) :-
+    safe(Queens, 1, Queen).
+
+% Факт, указывающий на то, что на пустой доске никто никого бить не может
+safe([], _, _).
+
+% Предикат, определяющий условия безопасности какого-либо ферзя относительно другого (но не самого себя)
+safe([OtherQueen|Queens], Offset, Queen) :-
+    Queen =\= OtherQueen,
+    Queen + Offset =\= OtherQueen,
+    Queen - Offset =\= OtherQueen,
+    NewOffset is Offset + 1,
+    safe(Queens, NewOffset, Queen).
