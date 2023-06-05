@@ -3,33 +3,34 @@
 % 18.05.22
 % Файл программы осуществляет решение задачи N ферзей, размещённых на шахматной доске NxN
 % таким образом, что ни один ферзь не может бить любого другого
+% 04.06.23 ver 1.1 Изменены имена термов
 
 % Учитывая то, что все колонки шахматной доски должны быть заняты,
 % суть задачи осуществляется в поиске клетки на соответствующей колонке.
 
 
 % Главный предикат, отвечающий за решение задачи
-queens(N, Solution) :-
-    length(Solution, N),
-    numlist(1, N, Rows),
-    permutation(Rows, Solution),
-    safe_all(Solution).
+queens(N, S) :-
+    length(S, N),
+    numlist(1, N, R),
+    permutation(R, S),
+    safe_all(S).
 
 % Факт, указывающий на то, что доска 0x0 всегда имеет решение.
 safe_all([]).
 
 % Предикат, определяющий условия правильности решения
-safe_all([Queen|Queens]) :-
-    safe(Queens, 1, Queen),
-    safe_all(Queens).
+safe_all([Q|A]) :-
+    safe(A, 1, Q),
+    safe_all(A).
 
 % Факт, указывающий на то, что на пустой доске никто никого бить не может
 safe([], _, _).
 
 % Предикат, определяющий условия безопасности какого-либо ферзя относительно остальных
-safe([OtherQueen|Queens], Offset, Queen) :-
-    Queen =\= OtherQueen,
-    Queen + Offset =\= OtherQueen,
-    Queen - Offset =\= OtherQueen,
-    NewOffset is Offset + 1,
-    safe(Queens, NewOffset, Queen).
+safe([D|A], C, Q) :-
+    Q =\= D,
+    Q + C =\= D,
+    Q - C =\= D,
+    N is C + 1,
+    safe(A, N, Q).
