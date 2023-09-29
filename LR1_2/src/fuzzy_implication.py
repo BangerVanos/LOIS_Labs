@@ -10,12 +10,19 @@
 
 import sympy as sp
 import pandas as pd
+from dataclasses import dataclass
 
 
-class FuzzyOutput:
+@dataclass
+class FuzzyConclusion:
+    premises: str | None
+    conclusion: str | None
+
+
+class FuzzyConclusionSolver:
 
     @staticmethod
-    def make_dataframe(fuzzy_set_1: dict, fuzzy_set_2: dict) -> pd.DataFrame:
+    def __fuzzy_implication(fuzzy_set_1: dict, fuzzy_set_2: dict) -> pd.DataFrame:
         x = sp.symbols('x')
         df = pd.DataFrame(columns=fuzzy_set_2.keys(), index=fuzzy_set_1.keys())
         for key_2, value_2 in fuzzy_set_2.items():
@@ -30,11 +37,11 @@ class FuzzyOutput:
         return df
 
     @classmethod
-    def fuzzy_conclusion(cls, premise: dict, implication_matrix: pd.DataFrame) -> dict | None:
+    def __fuzzy_conclusion(cls, fact: dict, implication_matrix: pd.DataFrame) -> dict | None:
         conclusion_result = {}
-        if list(implication_matrix.index) != list(premise.keys()):
+        if list(implication_matrix.index) != list(fact.keys()):
             return None
-        for key, value in premise.items():
+        for key, value in fact.items():
             implication_matrix.loc[key] = implication_matrix.loc[key] * value
         for key in implication_matrix.columns:
             conclusion_result[key] = max(implication_matrix.loc[:, key])
@@ -52,3 +59,25 @@ class FuzzyOutput:
             text = text[:-1]
             text += '}'
         return text
+
+    @classmethod
+    def __solve_implications(cls, parse_result: dict) -> dict | None:
+        for predicate in parse_result['predicates']:
+            implication = parse_result['predicates'][predicate]
+            first_fact = parse_result['facts'].get(implication.first_implicant)
+            second_fact = parse_result['facts'].get(implication.first_implicant)
+            parse_result['predicates'][predicate] = cls.__fuzzy_implication(first_fact, second_fact)
+        return parse_result
+
+    @classmethod
+    def solve(cls, parse_result: dict) -> list[FuzzyConclusion] | None:
+        solver_results = list()
+        parse_result = cls.__solve_implications(parse_result)
+        for fact in parse_result['facts']:
+            for predicate in parse_result['predicates']:
+                premises = '{' + ','.join([fact, predicate]) + '}'
+                conclusion_result = cls.__fuzzy_conclusion(parse_result['facts'][fact],
+                                                           parse_result['predicates'][predicate])
+                if conclusion_result is not None:
+                    solver_results.append(FuzzyConclusion(premises, cls.fuzzy_set_dict_to_str(conclusion_result)))
+        return solver_results

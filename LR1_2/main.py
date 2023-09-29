@@ -8,14 +8,16 @@
 ########################
 
 
-from src.fuzzy_implication import FuzzyOutput
-from src.fuzzy_set_parser import FuzzySetParser
+from src.fuzzy_implication_system import FuzzyImplicationSystem
 
 
 if __name__ == '__main__':
-    fuzzy_sets = FuzzySetParser.parse_read_fuzzy_sets(FuzzySetParser.read_file_for_fuzzy_sets('facts', 'premises'))
-    facts = fuzzy_sets['facts']
-    premises = fuzzy_sets['premises']
-    implication_matrix = FuzzyOutput.make_dataframe(facts['A'], facts['B'])
-    print(implication_matrix)
-    print(FuzzyOutput.fuzzy_set_dict_to_str(FuzzyOutput.fuzzy_conclusion(premises['C'], implication_matrix)))
+    file_name = input('Give path to file: ')
+    FuzzyImplicationSystem.print_conclusions_results(file_name)
+    # parse_res = FuzzySetParser.parse('program')
+    # print(parse_res)
+    # facts = parse_res['facts']
+    # premises = parse_res['program']
+    # implication_matrix = FuzzyOutput.make_dataframe(facts['A'], facts['B'])
+    # print(implication_matrix)
+    # print(FuzzyOutput.fuzzy_set_dict_to_str(FuzzyOutput.fuzzy_conclusion(premises['C'], implication_matrix)))

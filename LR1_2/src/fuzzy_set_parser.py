@@ -9,15 +9,22 @@
 
 
 import regex as re
+from dataclasses import dataclass
+
+
+@dataclass
+class FuzzyImplication:
+    first_implicant: str
+    second_implicant: str
 
 
 class FuzzySetParser:
     FUZZY_SET_PATTERN = r'^({(<([a-z]|([a-z][1-9][0-9]*)),((1\.0)|(0\.[0-9]))>)(,(?2))*})$'
-    FUZZY_SET_WITH_NAME_PATTERN = r'^([A-Z]|(A-Z[1-9][0-9]*))' \
-                                  r'=({(<([a-z]|([a-z][1-9][0-9]*)),((1\.0)|(0\.[0-9]))>)(,(?4))*})$'
+    FACT_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=({(<([a-z]|([a-z][1-9][0-9]*)),((1\.0)|(0\.[0-9]))>)(,(?4))*})\.$'
+    PREDICATE_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=(?1)~>(?1)\.$'
 
     @classmethod
-    def parse_fuzzy_set(cls, raw_line: str) -> dict | None:
+    def __parse_fuzzy_set(cls, raw_line: str) -> dict | None:
         if not re.fullmatch(cls.FUZZY_SET_PATTERN, raw_line):
             return None
         raw_line = raw_line[1:-1]
@@ -28,31 +35,43 @@ class FuzzySetParser:
         return elements
 
     @classmethod
-    def read_file_for_fuzzy_sets(cls, facts_dir: str, premises_dir: str) -> dict | None:
-        premises_and_facts = {'premises': {},
-                              'facts': {}}
-        with open(facts_dir, 'r') as facts_file:
-            for line in facts_file:
-                line = line.strip('\n')
-                if not re.fullmatch(cls.FUZZY_SET_WITH_NAME_PATTERN, line):
-                    return None
-                fuzzy_set = line.split('=')
-                premises_and_facts['facts'][fuzzy_set[0]] = fuzzy_set[1]
-        with open(premises_dir, 'r') as premises_file:
-            for line in premises_file:
-                line = line.strip('\n')
-                if not re.fullmatch(cls.FUZZY_SET_WITH_NAME_PATTERN, line):
-                    return None
-                fuzzy_set = line.split('=')
-                premises_and_facts['premises'][fuzzy_set[0]] = fuzzy_set[1]
-        return premises_and_facts
+    def __parse_program_file(cls, file_dir: str) -> dict | None:
+        parse_result: dict = {'facts': {},
+                              'predicates': {}}
+        with open(file_dir) as file:
+            for line in file:
+                line = line.strip('\n').replace(' ', '').replace('\t', '')
+                if re.fullmatch(cls.FACT_PATTERN, line):
+                    fact = line.split('=')
+                    if fact[0] in parse_result['predicates'].keys():
+                        raise ValueError('Literal type is Predicate, not Fact')
+                    parse_result['facts'][fact[0]] = fact[1][:-1]
+                elif re.fullmatch(cls.PREDICATE_PATTERN, line):
+                    predicate = line.split('=')
+                    if predicate[0] in parse_result['facts'].keys():
+                        raise ValueError('Literal type is Fact, not Predicate')
+                    parse_result['predicates'][predicate[0]] = predicate[1][:-1]
+                elif line == '':
+                    continue
+                else:
+                    raise ValueError('Cannot parse program file')
+        return parse_result
+    
+    @classmethod
+    def __parse_program_file_result(cls, raw_parse: dict) -> dict | None:
+        for _set in raw_parse['facts'].keys():
+            raw_parse['facts'][_set] = cls.__parse_fuzzy_set(raw_parse['facts'][_set])
+        for _implication in raw_parse['predicates'].keys():
+            raw_parse['predicates'][_implication] = cls.__parse_fuzzy_implication(raw_parse['predicates'][_implication])
+        return raw_parse
+    
+    @classmethod
+    def __parse_fuzzy_implication(cls, raw_line: str) -> FuzzyImplication:
+        implicants = raw_line.split('~>')
+        return FuzzyImplication(implicants[0], implicants[1])
 
     @classmethod
-    def parse_read_fuzzy_sets(cls, raw_fuzzy_sets: dict) -> dict | None:
-        if not raw_fuzzy_sets.get('premises') or not raw_fuzzy_sets.get('facts'):
-            return None
-        for name, raw_set in raw_fuzzy_sets['premises'].items():
-            raw_fuzzy_sets['premises'][name] = cls.parse_fuzzy_set(raw_set)
-        for name, raw_set in raw_fuzzy_sets['facts'].items():
-            raw_fuzzy_sets['facts'][name] = cls.parse_fuzzy_set(raw_set)
-        return raw_fuzzy_sets
+    def parse(cls, file_dir: str = 'program') -> dict | None:
+        raw_parse: dict = cls.__parse_program_file(file_dir)
+        return cls.__parse_program_file_result(raw_parse)
+
