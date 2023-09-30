@@ -65,7 +65,7 @@ class FuzzyConclusionSolver:
         for predicate in parse_result['predicates']:
             implication = parse_result['predicates'][predicate]
             first_fact = parse_result['facts'].get(implication.first_implicant)
-            second_fact = parse_result['facts'].get(implication.first_implicant)
+            second_fact = parse_result['facts'].get(implication.second_implicant)
             parse_result['predicates'][predicate] = cls.__fuzzy_implication(first_fact, second_fact)
         return parse_result
 
