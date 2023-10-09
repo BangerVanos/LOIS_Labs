@@ -20,31 +20,39 @@ class FuzzyConclusion:
 
 
 class FuzzyConclusionSolver:
-
     @staticmethod
-    def __fuzzy_implication(fuzzy_set_1: dict, fuzzy_set_2: dict) -> pd.DataFrame:
-        x = sp.symbols('x')
+    def __gauguin_norm_delta(f_belonging_degree: int | float, s_belonging_degree: int | float) -> float:
+        if f_belonging_degree <= s_belonging_degree:
+            return 1.0
+        else:
+            return s_belonging_degree / f_belonging_degree
+
+    @classmethod
+    def __fuzzy_implication(cls, fuzzy_set_1: dict, fuzzy_set_2: dict) -> pd.DataFrame:
+        # x = sp.symbols('x')
         df = pd.DataFrame(columns=fuzzy_set_2.keys(), index=fuzzy_set_1.keys())
         for key_2, value_2 in fuzzy_set_2.items():
             for key_1, value_1 in fuzzy_set_1.items():
-                inequality1 = value_1 * x <= value_2
-                inequality2 = x <= 1
-                solution = sp.solve_univariate_inequality(inequality1, x,
-                                                          relational=False) & sp.solve_univariate_inequality(
-                    inequality2, x, relational=False)
-                solution = solution.end
+                # inequality1 = value_1 * x <= value_2
+                # inequality2 = x <= 1
+                # solution = sp.solve_univariate_inequality(inequality1, x,
+                #                                           relational=False) & sp.solve_univariate_inequality(
+                #     inequality2, x, relational=False)
+                # solution = solution.end
+                solution = cls.__gauguin_norm_delta(value_1, value_2)
                 df.loc[key_1, key_2] = solution
         return df
 
     @classmethod
     def __fuzzy_conclusion(cls, fact: dict, implication_matrix: pd.DataFrame) -> dict | None:
         conclusion_result = {}
+        result_implication_matrix = pd.DataFrame(index=implication_matrix.index, columns=implication_matrix.columns)
         if list(implication_matrix.index) != list(fact.keys()):
             return None
         for key, value in fact.items():
-            implication_matrix.loc[key] = implication_matrix.loc[key] * value
+            result_implication_matrix.loc[key] = implication_matrix.loc[key] * value
         for key in implication_matrix.columns:
-            conclusion_result[key] = max(implication_matrix.loc[:, key])
+            conclusion_result[key] = max(result_implication_matrix.loc[:, key])
         return conclusion_result
 
     @staticmethod
