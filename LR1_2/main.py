@@ -14,3 +14,7 @@ from src.fuzzy_implication_system import FuzzyImplicationSystem
 if __name__ == '__main__':
     file_name = input('Give path to file: ')
     FuzzyImplicationSystem.print_conclusions_results(file_name)
+
+# Добавить возможность цепочек (попробовать реализовать суть как в прологе)
+# Проверить (добавить в отчёт) результаты на нормированных и ненормированных множествах
+# Кидать и ловить собственные исключения

@@ -19,9 +19,9 @@ class FuzzyImplication:
 
 
 class FuzzySetParser:
-    FUZZY_SET_PATTERN = r'^({(<([a-z]|([a-z][1-9][0-9]*)),((1\.0)|(0\.[0-9]))>)(,(?2))*})$'
-    FACT_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=({(<([a-z]|([a-z][1-9][0-9]*)),((1\.0)|(0\.[0-9]))>)(,(?4))*})\.$'
-    PREDICATE_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=(?1)~>(?1)\.$'
+    FUZZY_SET_PATTERN = r'^({(<([a-z]|([a-z][1-9][0-9]*)),(1|(1\.0)|(0\.[0-9]))>)(,(?2))*})$'
+    FACT_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=({(<([a-z]|([a-z][1-9][0-9]*)),(1|(1\.0)|(0\.[0-9]))>)(,(?4))*})\.$'
+    PREDICATE_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))~>(?1)\.$'
 
     @classmethod
     def __parse_fuzzy_set(cls, raw_line: str) -> dict | None:
@@ -47,10 +47,10 @@ class FuzzySetParser:
                         raise ValueError('Literal type is Predicate, not Fact')
                     parse_result['facts'][fact[0]] = fact[1][:-1]
                 elif re.fullmatch(cls.PREDICATE_PATTERN, line):
-                    predicate = line.split('=')
-                    if predicate[0] in parse_result['facts'].keys():
-                        raise ValueError('Literal type is Fact, not Predicate')
-                    parse_result['predicates'][predicate[0]] = predicate[1][:-1]
+                    predicate = line[:-1]
+                    if predicate in parse_result['predicates'].keys():
+                        raise ValueError(f'Predicate ({predicate}) presented in program several times.')
+                    parse_result['predicates'][predicate] = predicate
                 elif line == '':
                     continue
                 else:
@@ -74,4 +74,3 @@ class FuzzySetParser:
     def parse(cls, file_dir: str = 'program') -> dict | None:
         raw_parse: dict = cls.__parse_program_file(file_dir)
         return cls.__parse_program_file_result(raw_parse)
-

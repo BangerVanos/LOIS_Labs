@@ -25,4 +25,4 @@ class FuzzyImplicationSystem:
         print('All possible conclusions results:')
         conclusions = cls.__get_all_conclusions(program_file)
         for conclusion in conclusions:
-            print(f'{conclusion.premises}|-{conclusion.conclusion}')
+            print(f'{conclusion.conclusion_level}.{conclusion.premises}|-{conclusion.conclusion}')
