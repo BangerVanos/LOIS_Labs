@@ -39,22 +39,25 @@ class FuzzySetParser:
         parse_result: dict = {'facts': {},
                               'predicates': {}}
         with open(file_dir) as file:
+            line_index = 0
             for line in file:
+                line_index += 1
                 line = line.strip('\n').replace(' ', '').replace('\t', '')
                 if re.fullmatch(cls.FACT_PATTERN, line):
                     fact = line.split('=')
                     if fact[0] in parse_result['predicates'].keys():
-                        raise ValueError('Literal type is Predicate, not Fact')
+                        raise ValueError(f'ERROR ON LINE {line_index}: Literal type is Predicate, not Fact')
                     parse_result['facts'][fact[0]] = fact[1][:-1]
                 elif re.fullmatch(cls.PREDICATE_PATTERN, line):
                     predicate = line[:-1]
                     if predicate in parse_result['predicates'].keys():
-                        raise ValueError(f'Predicate ({predicate}) presented in program several times.')
+                        raise ValueError(f'ERROR ON LINE {line_index}: Predicate ({predicate}) '
+                                         f'presented in program several times.')
                     parse_result['predicates'][predicate] = predicate
                 elif line == '':
                     continue
                 else:
-                    raise ValueError('Cannot parse program file')
+                    raise ValueError(f'ERROR ON LINE {line_index}: Cannot parse this line')
         return parse_result
     
     @classmethod
