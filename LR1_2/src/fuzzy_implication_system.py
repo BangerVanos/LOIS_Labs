@@ -25,4 +25,20 @@ class FuzzyImplicationSystem:
         print('All possible conclusions results:')
         conclusions = cls.__get_all_conclusions(program_file)
         for conclusion in conclusions:
-            print(f'{conclusion.conclusion_level}.{conclusion.premises}|-{conclusion.conclusion}')
+            conclusion_str = f'{conclusion.conclusion_level}.{conclusion.premises}' \
+                             f'|-{cls.fuzzy_set_dict_to_str(conclusion.conclusion)}' \
+                             f'={conclusion.result_name}'
+            print('\t'*(conclusion.conclusion_level - 1)+f'|-{conclusion_str}')
+
+    @staticmethod
+    def fuzzy_set_dict_to_str(conclusion_result: dict | None) -> str | None:
+        if conclusion_result is None:
+            return None
+        text = '{'
+        for key, value in conclusion_result.items():
+            text += f'<{key},{value}>'
+            text += ','
+        else:
+            text = text[:-1]
+            text += '}'
+        return text

@@ -5,6 +5,7 @@
 # Файл класс, реализующий прямой нечёткий вывод для обработанных данных
 # Дата: 25.09.23
 # Дата: 10.10.23 изменён метод поиска точной верхней грани
+# Дата: 25.10.23 Добавлена возможность переиспользования полученных выводов (цепочки + их размыкание)
 #
 ########################
 
@@ -14,10 +15,15 @@ from dataclasses import dataclass
 
 
 @dataclass
-class FuzzyConclusion:
+class UnnamedFuzzyConclusion:
     conclusion_level: int | None
     premises: str | None
-    conclusion: str | None
+    conclusion: dict | None
+
+
+@dataclass
+class NamedFuzzyConclusion(UnnamedFuzzyConclusion):
+    result_name: str | None
 
 
 class FuzzyConclusionSolver:
@@ -50,19 +56,6 @@ class FuzzyConclusionSolver:
             conclusion_result[key] = max(result_implication_matrix.loc[:, key])
         return conclusion_result
 
-    @staticmethod
-    def fuzzy_set_dict_to_str(conclusion_result: dict | None) -> str | None:
-        if conclusion_result is None:
-            return None
-        text = '{'
-        for key, value in conclusion_result.items():
-            text += f'<{key},{value}>'
-            text += ','
-        else:
-            text = text[:-1]
-            text += '}'
-        return text
-
     @classmethod
     def __solve_implications(cls, parse_result: dict) -> dict | None:
         for predicate in parse_result['predicates']:
@@ -73,35 +66,37 @@ class FuzzyConclusionSolver:
         return parse_result
 
     @classmethod
-    def solve(cls, parse_result: dict) -> list[FuzzyConclusion] | None:
+    def solve(cls, parse_result: dict) -> list[UnnamedFuzzyConclusion] | None:
 
         solver_results = list()
         facts_and_predicates = cls.__solve_implications(parse_result)
         all_predicates_used = False
-        used_predicates_by_level = {0: set()}
+        used_predicates = set()
         solve_level = 1
         new_fact_index = 0
 
         while not all_predicates_used:
             conclusion_results = []
-            used_predicates_by_level[solve_level] = set()
+            used_predicates_in_level = set()
             for fact in facts_and_predicates['facts']:
                 for predicate in facts_and_predicates['predicates']:
-                    if predicate in used_predicates_by_level[solve_level - 1] or fact in predicate:
+                    if predicate in used_predicates or fact in predicate:
                         continue
                     premises = '{' + ','.join([fact, '(' + predicate + ')']) + '}'
                     conclusion_result = cls.__fuzzy_conclusion(facts_and_predicates['facts'][fact],
                                                                facts_and_predicates['predicates'][predicate])
                     if conclusion_result is not None:
-                        conclusion_results.append(FuzzyConclusion(solve_level, premises,
-                                                                  cls.fuzzy_set_dict_to_str(conclusion_result)))
-                        used_predicates_by_level[solve_level].add(predicate)
-            for conclusion_result in conclusion_results:
-                if conclusion_result.conclusion is not None:
-                    new_fact_index += 1
-                    facts_and_predicates['facts'][f'P#{new_fact_index}'] = conclusion_result.conclusion
-                    solver_results.append(conclusion_result)
-            if len(used_predicates_by_level[solve_level]) <= 0:
+                        conclusion_results.append(UnnamedFuzzyConclusion(solve_level, premises, conclusion_result))
+                        used_predicates_in_level.add(predicate)
+            for unnamed_conclusion in conclusion_results:
+                new_fact_index += 1
+                facts_and_predicates['facts'][f'P#{new_fact_index}'] = unnamed_conclusion.conclusion
+                solver_results.append(NamedFuzzyConclusion(unnamed_conclusion.conclusion_level,
+                                                           unnamed_conclusion.premises,
+                                                           unnamed_conclusion.conclusion,
+                                                           f'P#{new_fact_index}'))
+            if len(used_predicates_in_level) <= 0:
                 all_predicates_used = True
             solve_level += 1
+            used_predicates.update(used_predicates_in_level)
         return solver_results
