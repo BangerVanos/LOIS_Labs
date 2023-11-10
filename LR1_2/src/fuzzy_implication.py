@@ -66,7 +66,7 @@ class FuzzyConclusionSolver:
         return parse_result
 
     @classmethod
-    def solve(cls, parse_result: dict) -> list[UnnamedFuzzyConclusion] | None:
+    def solve(cls, parse_result: dict) -> list[NamedFuzzyConclusion] | None:
 
         solver_results = list()
         facts_and_predicates = cls.__solve_implications(parse_result)
