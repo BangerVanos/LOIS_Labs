@@ -3,7 +3,7 @@ import regex as re
 import numpy as np
 
 
-class BackwardConclusionParser:
+class BackwardFuzzyConclusionParser:
     FACT_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=({(<([a-z]|([a-z][1-9][0-9]*)),(0|1|(1\.0)|(0\.[0-9]+))>)(,(?4))*})\.$'
     RULE_PATTERN = r'^([A-Z]|([A-Z][1-9][0-9]*))=({(<<([a-z]|([a-z][1-9][0-9]*)),([a-z]|([a-z][1-9][0-9]*))>,' \
                    r'(0|1|(1\.0)|(0\.[0-9]+))>)(,(?4))*})\.$'

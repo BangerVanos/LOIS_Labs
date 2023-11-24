@@ -1,6 +1,5 @@
-from src.backward_conclusion_parser import BackwardConclusionParser
+from src.backward_conclusion_system import BackwardFuzzyConclusionSystem
 
 
 if __name__ == '__main__':
-    result = BackwardConclusionParser.parse('program.txt')
-    print(result)
+    BackwardFuzzyConclusionSystem.run(input('Enter path to program file: '))
