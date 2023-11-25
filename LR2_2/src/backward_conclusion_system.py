@@ -1,3 +1,13 @@
+########################
+#
+# Лабораторная работа № 5 по дисциплине "Логические основы интеллектуальных систем"
+# Выполнена студентами группы 121702 БГУИР Заломовым Р.А., Готиным И.А., Булановичем В.И.
+# Файл содержит класс, объединяющим парсер и решатель задач системы, реализующей обратный нечёткий логический вывод
+# Дата: 25.11.23
+#
+########################
+
+
 from .backward_conclusion_solver import BackwardFuzzyConclusionSolver
 from .backward_conclusion_parser import BackwardFuzzyConclusionParser
 from .additional_math import Interval
