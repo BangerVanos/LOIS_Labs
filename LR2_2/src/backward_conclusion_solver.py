@@ -19,12 +19,13 @@ class BackwardFuzzyConclusionSolver:
     def solve(cls, parse_result: dict):
         equations_dict = cls._make_equations(parse_result)
         equations_dict = cls._find_solutions(equations_dict)
-        equations_dict = {system_name: system for system_name, system in
-                          equations_dict.items() if None not in system}
+        equations_dict = {system_name: system if None not in system else [] for system_name, system in
+                          equations_dict.items()}
         equations_dict = {system_name: list(product(*system)) for system_name, system in equations_dict.items()}
         equations_dict_solutions = cls._unite_solutions(equations_dict)
         equations_dict_solutions = {system: solutions for system, solutions in equations_dict_solutions.items()
                                     if len(solutions) > 0}
+        equations_dict_solutions = cls._drop_duplicated_solutions_from_systems(equations_dict_solutions)
         return equations_dict_solutions
 
     @classmethod
@@ -101,3 +102,39 @@ class BackwardFuzzyConclusionSolver:
             return numeric_value
         else:
             return None
+
+    @classmethod
+    def _drop_duplicated_solutions_from_systems(cls, systems_solutions_dict: dict):
+        for system_name, system in systems_solutions_dict.items():
+            solutions_without_duplicates = []
+            [solutions_without_duplicates.append(solution) for solution in system if solution
+             not in solutions_without_duplicates]
+            unique_solutions = []
+            for solution in solutions_without_duplicates:
+                if not cls._is_there_more_general_solutions(solution, solutions_without_duplicates):
+                    unique_solutions.append(solution)
+            systems_solutions_dict[system_name] = unique_solutions
+        return systems_solutions_dict
+
+    @classmethod
+    def _check_solution_for_inclusion_in_other(cls, solution: dict, other_solution: dict) -> bool:
+        # False is returned because it is considered that we won't have same solutions at this moment
+        if solution == other_solution:
+            return False
+        vars_inbounds = set()
+        for var in solution.keys():
+            if not other_solution.get(var):
+                return False
+            if isinstance(solution[var], float | int) and isinstance(other_solution[var], float | int) and \
+                    solution[var] == other_solution[var]:
+                vars_inbounds.add(var)
+            elif isinstance(other_solution[var], AbstractInterval) and solution[var] in other_solution[var]:
+                vars_inbounds.add(var)
+        return vars_inbounds == set(solution.keys())
+
+    @classmethod
+    def _is_there_more_general_solutions(cls, solution: dict, solutions_list: list[dict]) -> bool:
+        for other_solution in solutions_list:
+            if cls._check_solution_for_inclusion_in_other(solution, other_solution):
+                return True
+        return False

@@ -23,6 +23,11 @@ class AbstractInterval(ABC):
 
 
 class Interval(AbstractInterval):
+    _BOUNDARY_RULES = {
+        False: [True, False],
+        True: [True]
+    }
+
     def __init__(self, left: float | int = 0, right: float | int = 0, strict_left: bool = False,
                  strict_right: bool = False):
         if right < left:
@@ -33,10 +38,25 @@ class Interval(AbstractInterval):
         self.strict_right: bool = strict_right
 
     def __contains__(self, item: float | int):
-        if not isinstance(item, float | int):
-            raise TypeError('Intervals can only contain numeric types')
-        return (item > self.left if self.strict_left else item >= self.left) and \
-            (item < self.right if self.strict_right else item <= self.right)
+        if not isinstance(item, float | int | AbstractInterval):
+            raise TypeError('Intervals can only contain numeric types or other intervals')
+        if isinstance(item, float | int):
+            return (item > self.left if self.strict_left else item >= self.left) and \
+                (item < self.right if self.strict_right else item <= self.right)
+        elif isinstance(item, EmptyInterval):
+            return True
+        elif isinstance(item, Interval):
+            containing_score = 0
+            if self.left >= item.left:
+                containing_score += 1
+            if self.right <= item.right:
+                containing_score += 1
+            if item.strict_right in self._BOUNDARY_RULES[self.strict_right]:
+                containing_score += 1
+            if item.strict_left in self._BOUNDARY_RULES[self.strict_left]:
+                containing_score += 1
+            return containing_score == 4
+        return False
 
     def __repr__(self):
         open_bracket = '(' if self.strict_left else '['
@@ -88,8 +108,8 @@ class EmptyInterval(AbstractInterval):
         return EmptyInterval()
 
     def __contains__(self, item):
-        if not isinstance(item, float | int):
-            raise TypeError('Intervals can only contain numeric types')
+        if not isinstance(item, float | int | AbstractInterval):
+            raise TypeError('Intervals can only contain numeric types or other intervals')
         return False
 
 
@@ -114,4 +134,11 @@ class CompositionEquation:
                                   else self.result / self.expression[var])) if var != fixed_var
                                   else self.result / self.expression[var]
                                   for var in self.expression})
-        return solutions_list
+        unique_solutions = []
+        [unique_solutions.append(solution) for solution in solutions_list if solution not in unique_solutions]
+        return unique_solutions
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            raise TypeError(f'You can compare {type(self)} object to the same type object')
+        return other.result == self.result and other.expression == self.expression
