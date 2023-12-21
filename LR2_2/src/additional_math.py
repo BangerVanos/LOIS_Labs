@@ -94,6 +94,12 @@ class Interval(AbstractInterval):
                 new_strict_right = any([self.strict_left, other.__getattribute__('strict_left')])
             return Interval(new_left, new_right, new_strict_left, new_strict_right)
 
+    def __eq__(self, other):
+        if not isinstance(other, Interval):
+            return False
+        return other.strict_left == self.strict_left and other.strict_right == self.strict_right\
+            and other.left == self.left and other.right == self.right
+
 
 class EmptyInterval(AbstractInterval):
     def __repr__(self):

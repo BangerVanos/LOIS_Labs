@@ -4,6 +4,7 @@
 # Выполнена студентами группы 121702 БГУИР Заломовым Р.А., Готиным И.А., Булановичем В.И.
 # Файл содержит класс, являющийся решателем задач системы, реализующей обратный нечёткий логический вывод
 # Дата: 25.11.23
+# Дата: 21.12.23 изменён подход к удалению менее общих решений
 #
 ########################
 
@@ -94,6 +95,8 @@ class BackwardFuzzyConclusionSolver:
         for value in variable_values:
             if isinstance(value, float | int):
                 numeric_values.add(value)
+                # Uncomment line below and comment line beyond if you have problems with decimal accuracy
+                # numeric_values.add(round(value, 7)) uncomment that line if you have problems with decimal accuracy
         if len(numeric_values) > 1:
             return None
         numeric_value = list(numeric_values)[0]
@@ -106,15 +109,36 @@ class BackwardFuzzyConclusionSolver:
     @classmethod
     def _drop_duplicated_solutions_from_systems(cls, systems_solutions_dict: dict):
         for system_name, system in systems_solutions_dict.items():
-            solutions_without_duplicates = []
-            [solutions_without_duplicates.append(solution) for solution in system if solution
-             not in solutions_without_duplicates]
+            solutions_without_duplicates = list()
+            for solution in system:
+                solutions_without_duplicates = cls._append_solution_to_solution_list(solution,
+                                                                                     solutions_without_duplicates)
+
             unique_solutions = []
+            min_amount_of_constants = cls._find_minimal_amount_of_constants(system)
             for solution in solutions_without_duplicates:
-                if not cls._is_there_more_general_solutions(solution, solutions_without_duplicates):
+                if cls._find_amount_of_constants_in_solution(solution) == min_amount_of_constants:
                     unique_solutions.append(solution)
             systems_solutions_dict[system_name] = unique_solutions
         return systems_solutions_dict
+
+    @classmethod
+    def _append_solution_to_solution_list(cls, solution: dict, solution_list: list[dict]):
+        for other_solution in solution_list:
+            if list(solution.keys()) == list(other_solution.keys())\
+                    and list(other_solution.values()) == list(solution.values()):
+                return solution_list
+        solution_list.append(solution)
+        return solution_list
+
+    @classmethod
+    def _find_amount_of_constants_in_solution(cls, solution):
+        return sum([1 if isinstance(var, float | int) else 0 for var in solution.values()])
+
+    @classmethod
+    def _find_minimal_amount_of_constants(cls, system: dict):
+        amount_of_constants = [cls._find_amount_of_constants_in_solution(solution) for solution in system]
+        return min(amount_of_constants)
 
     @classmethod
     def _check_solution_for_inclusion_in_other(cls, solution: dict, other_solution: dict) -> bool:
@@ -130,6 +154,8 @@ class BackwardFuzzyConclusionSolver:
                 vars_inbounds.add(var)
             elif isinstance(other_solution[var], AbstractInterval) and solution[var] in other_solution[var]:
                 vars_inbounds.add(var)
+        # if len(vars_inbounds) > len(solution.keys()) - 1:
+        #     return False
         return vars_inbounds == set(solution.keys())
 
     @classmethod
